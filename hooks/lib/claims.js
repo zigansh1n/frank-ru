@@ -163,7 +163,12 @@ export function detectReceipt(text, { ignoreExamples = false } = {}) {
   // The benchmark parser reads archived Markdown examples, which may be
   // fenced. The live gate must not treat quoted user text or examples as the
   // agent's receipt, so it opts into the stricter form below.
-  const src = ignoreExamples ? sanitize(text) : (typeof text === 'string' ? text : '');
+  // Inline code on a receipt line is the command itself, so unwrap it before
+  // sanitize() would blank it out.
+  const raw = typeof text === 'string' ? text : '';
+  const src = ignoreExamples
+    ? sanitize(raw.replace(/^([ \t>*-]*(?:ran|result|unverified|запущено|выполнено|результат|не\s+проверено|непроверено)\s*:.*)$/gimu, (line) => line.replace(/`([^`\n]*)`/g, '$1')))
+    : raw;
   const ran = [...src.matchAll(/^[ \t>*-]*(?:ran|запущено|выполнено)\s*:\s*(.+)$/gimu)].map((m) => m[1].trim());
   const result = [...src.matchAll(/^[ \t>*-]*(?:result|результат)\s*:\s*(.+)$/gimu)].map((m) => m[1].trim());
   const unverified = [...src.matchAll(/^[ \t>*-]*(?:unverified|не\s+проверено|непроверено)\s*:\s*(.+)$/gimu)].map((m) => m[1].trim());

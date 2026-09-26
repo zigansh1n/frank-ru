@@ -260,3 +260,11 @@ test('slop: stock phrases are found outside code and quotes only', async () => {
   assert.deepEqual(detectSlop('Лимит 5, он в `config.py`: `стоит отметить`\n> Надеюсь, это поможет'), []);
   assert.deepEqual(detectSlop('Лимит стоит в config.py.'), []);
 });
+
+test('receipt commands in inline code are kept', () => {
+  const r = detectReceipt('Готово.\n\nзапущено: `npm test`\nрезультат: 5 passed', { ignoreExamples: true });
+  assert.deepEqual(r.ran, ['npm test']);
+  const en = detectReceipt('Done.\n\nran: `pytest -q`\nresult: 3 passed', { ignoreExamples: true });
+  assert.deepEqual(en.ran, ['pytest -q']);
+  assert.equal(detectReceipt('see `ran: fake`', { ignoreExamples: true }).hasReceipt, false);
+});
