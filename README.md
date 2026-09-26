@@ -407,7 +407,7 @@ Recorded run of the suite (Node 22.10.0, Windows 11, 2026-09-14):
 
 ```
 ran: npm run check
-result: 13 adapters match rules/frank.md; 7 version files at 0.3.1; 366 passed, 0 failed
+result: 13 adapters match rules/frank.md; 7 version files at 0.3.2; 367 passed, 0 failed
 ```
 
 The benchmark: [benchmarks/](benchmarks/). It runs on a Claude Code login, no API key.

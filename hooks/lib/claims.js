@@ -12,6 +12,8 @@ export function sanitize(text) {
     .replace(/~~~[\s\S]*?(?:~~~|$)/g, ' ')
     .replace(/`[^`\n]*`/g, ' ')                  // inline code
     .replace(/^[ \t]*>.*$/gm, ' ')               // blockquote (quoted user text)
+    .replace(/«[^»\n]{0,120}»/g, ' ')            // a phrase mentioned, not said
+    .replace(/(^|[\s(:])"[^"\n]{1,120}"(?=[\s.,;:!?)]|$)/g, '$1 ')
     .replace(/^[ \t]{4,}\S.*$/gm, ' ');          // indented code block
 }
 

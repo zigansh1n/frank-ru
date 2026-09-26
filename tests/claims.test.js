@@ -268,3 +268,11 @@ test('receipt commands in inline code are kept', () => {
   assert.deepEqual(en.ran, ['pytest -q']);
   assert.equal(detectReceipt('see `ran: fake`', { ignoreExamples: true }).hasReceipt, false);
 });
+
+test('a phrase in quotes is mentioned, not claimed', () => {
+  assert.equal(detectClaim('Рубленые «Fixed.» и «Готово.» в начале фразы Frank ловит.').claim, false);
+  assert.equal(detectClaim('Phrases like "Done." and "All tests pass." get flagged.').claim, false);
+  assert.equal(detectOpener('Фраза «Ты абсолютно прав» запрещена.').opener, false);
+  assert.equal(detectClaim('Готово, парсер исправлен.').claim, true);
+  assert.equal(detectClaim('Fixed the "retry" loop.').claim, true);
+});
