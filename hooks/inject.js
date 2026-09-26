@@ -5,7 +5,7 @@
 // so the same hook runs on every prompt too. It also handles `/frank <mode>`
 // for hosts that do not route slash commands to the skill.
 import { run } from './lib/io.js';
-import { getMode, setMode, clearMode, normalizeMode, pruneSessions } from './lib/state.js';
+import { getMode, setMode, clearMode, normalizeMode, pruneSessions, getConfig } from './lib/state.js';
 import { rulesText, frameForInjection } from './lib/ruleset.js';
 import { host, contextOutput } from './lib/host.js';
 
@@ -41,6 +41,12 @@ run('inject', (input) => {
     // Codex shows the badge even when off, so the user can see it took.
     return switched && host === 'codex' ? { systemMessage: 'FRANK:OFF' } : null;
   }
+
+  // SessionStart already fires again after compaction, so repeating the rules on
+  // every prompt only piles copies into the context. Opt back in with
+  // config.json {"inject": {"everyPrompt": true}}.
+  const modeCommand = event === 'UserPromptSubmit' && MODE_COMMAND.test(input.prompt || '');
+  if (event === 'UserPromptSubmit' && host === 'claude' && !modeCommand && !getConfig()?.inject?.everyPrompt) return null;
 
   const context = frameForInjection(rulesText(), mode);
   const out = contextOutput(event, mode, context);

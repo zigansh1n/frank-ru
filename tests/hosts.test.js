@@ -75,7 +75,7 @@ test('Claude Code announces the mode once, on startup only', () => {
   const start = runHook('inject', { hook_event_name: 'SessionStart', source: 'startup' });
   assert.equal(start.json.systemMessage, 'Frank: full');
   const prompt = runHook('inject', { hook_event_name: 'UserPromptSubmit', prompt: 'hi' });
-  assert.equal(prompt.json.systemMessage, undefined);
+  assert.equal(prompt.json?.systemMessage, undefined);
 });
 
 test('the gate blocks with decision:block on Codex, feedback on Claude Code', () => {

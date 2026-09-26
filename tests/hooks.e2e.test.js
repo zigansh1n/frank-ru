@@ -46,8 +46,16 @@ test('SessionStart after compaction re-injects without re-announcing', () => {
   assert.equal(r.json.systemMessage, undefined);
 });
 
-test('UserPromptSubmit injects on every prompt', () => {
+test('UserPromptSubmit stays quiet by default', () => {
   const r = runHook('inject', { hook_event_name: 'UserPromptSubmit', session_id: 's1', prompt: 'fix the parser' });
+  assert.equal(r.code, 0);
+  assert.equal(r.stdout, '');
+});
+
+test('UserPromptSubmit injects on every prompt when configured', () => {
+  const FRANK_HOME = tmpHome();
+  fs.writeFileSync(path.join(FRANK_HOME, 'config.json'), JSON.stringify({ inject: { everyPrompt: true } }));
+  const r = runHook('inject', { hook_event_name: 'UserPromptSubmit', session_id: 's1', prompt: 'fix the parser' }, { FRANK_HOME });
   assert.equal(r.json.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
   assert.match(r.json.hookSpecificOutput.additionalContext, /verdict first/i);
 });
@@ -62,7 +70,7 @@ test('/frank ultra sets the mode for later hooks', () => {
   const FRANK_HOME = tmpHome();
   const set = runHook('inject', { hook_event_name: 'UserPromptSubmit', session_id: 's1', prompt: '/frank ultra' }, { FRANK_HOME });
   assert.match(set.json.hookSpecificOutput.additionalContext, /mode: ultra/);
-  const next = runHook('inject', { hook_event_name: 'UserPromptSubmit', session_id: 's1', prompt: 'hello' }, { FRANK_HOME });
+  const next = runHook('inject', { hook_event_name: 'SessionStart', session_id: 's1', source: 'startup' }, { FRANK_HOME });
   assert.match(next.json.hookSpecificOutput.additionalContext, /mode: ultra/);
 });
 
