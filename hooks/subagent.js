@@ -8,7 +8,7 @@
 // the failure mode of scoping is a silent drop, and silence is what we are
 // trying to remove.
 import { run } from './lib/io.js';
-import { getMode } from './lib/state.js';
+import { getMode, skipsSubagent } from './lib/state.js';
 import { subagentRulesText, frameForInjection } from './lib/ruleset.js';
 import { contextOutput } from './lib/host.js';
 
@@ -25,6 +25,6 @@ function matches(agentType) {
 run('subagent', (input) => {
   const mode = getMode();
   if (mode === 'off') return null;
-  if (!matches(input.agent_type)) return null;
+  if (!matches(input.agent_type) || skipsSubagent(input.agent_type)) return null;
   return contextOutput('SubagentStart', mode, frameForInjection(subagentRulesText(), mode));
 });

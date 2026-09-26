@@ -155,11 +155,60 @@ test('ultra blocks a sycophantic opener', () => {
   assert.match(r.reason, /absolutely right/);
 });
 
-test('full does not block on an opener alone', () => {
+test('full blocks an opener alone', () => {
   const r = decide({
     message: "You're absolutely right, the cap is missing.", session: session(), mode: 'full',
   });
+  assert.equal(r.action, 'block');
+  assert.equal(r.kind, 'opener');
+});
+
+test('lite never blocks an opener', () => {
+  const r = decide({ message: 'Ты абсолютно прав, лимита нет.', session: session(), mode: 'lite' });
   assert.equal(r.action, 'allow');
+});
+
+test('a Russian opener is blocked in full', () => {
+  const r = decide({ message: 'Ты абсолютно прав, лимита нет в parser.py.', session: session(), mode: 'full' });
+  assert.equal(r.action, 'block');
+  assert.equal(r.kind, 'opener');
+});
+
+test('stock phrases are blocked once and named', () => {
+  const r = decide({ message: 'Лимит стоит в config.py. Надеюсь, это поможет!', session: session(), mode: 'full' });
+  assert.equal(r.action, 'block');
+  assert.equal(r.kind, 'slop');
+  assert.match(r.reason, /Надеюсь, это поможет/);
+  assert.equal(decide({
+    message: 'Лимит стоит в config.py. Надеюсь, это поможет!', session: session(), mode: 'full', blocksThisTurn: 1,
+  }).action, 'allow');
+});
+
+test('an opener and a missing receipt come back as one block', () => {
+  const r = decide({ message: 'Отличный вопрос! Исправил парсер.', session: session(), mode: 'full' });
+  assert.equal(r.action, 'block');
+  assert.equal(r.kind, 'opener');
+  assert.match(r.reason, /Отличный вопрос/);
+  assert.match(r.reason, /unverified:/);
+});
+
+test('a Russian claim with nothing run is blocked', () => {
+  const r = decide({ message: 'Готово, баг исправлен.', session: session(), mode: 'full' });
+  assert.equal(r.action, 'block');
+  assert.equal(r.kind, 'no-receipt');
+});
+
+test('a Russian receipt backed by the ledger passes', () => {
+  const msg = 'Исправил парсер.\n\nзапущено: npm test\nрезультат: 42 passed';
+  const r = decide({ message: msg, session: session({ evidence: [ev()] }), mode: 'full' });
+  assert.equal(r.action, 'allow');
+  assert.equal(r.kind, 'receipt-matches-ledger');
+});
+
+test('"не проверено:" gets through', () => {
+  const r = decide({ message: 'Исправил парсер.\n\nне проверено: нет тестов на парсер', session: session(), mode: 'full' });
+  assert.equal(r.action, 'allow');
+  assert.equal(r.kind, 'honest-unverified');
 });
 
 test('missing session state does not throw', () => {

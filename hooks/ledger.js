@@ -7,7 +7,7 @@
 // reads it at Stop time. The ledger records commands; it never runs them.
 import { run } from './lib/io.js';
 import { getMode, getConfig, updateSession } from './lib/state.js';
-import { classifyCommand } from './lib/evidence.js';
+import { classifyCommand, isShellEdit, maskedByPipe, outputShowsFailure } from './lib/evidence.js';
 
 // apply_patch is Codex's edit tool. NotebookEdit is Claude's.
 const EDIT_TOOLS = /^(?:Edit|Write|MultiEdit|NotebookEdit|apply_patch)$/;
@@ -32,6 +32,12 @@ function exitCodeOf(input) {
   return 0;
 }
 
+function outputOf(input) {
+  const r = input.tool_response;
+  if (typeof r === 'string') return r;
+  if (!r || typeof r !== 'object') return '';
+  return [r.stdout, r.stderr, r.output].filter((x) => typeof x === 'string').join('\n');
+}
 
 run('ledger', (input) => {
   if (getMode() === 'off') return null;
@@ -45,18 +51,30 @@ run('ledger', (input) => {
   if (!SHELL_TOOLS.test(tool)) return null;
 
   const command = String(input.tool_input?.command || '');
+  const edited = isShellEdit(command);
   const hit = classifyCommand(command, getConfig()?.receipts?.commands);
-  if (!hit.isEvidence) return null;
+  if (!edited && !hit.isEvidence) return null;
 
-  updateSession(id, (s) => ({
-    ...s,
-    evidence: [...s.evidence, {
-      ts: Date.now(),
-      cmd: command.trim().slice(0, 500),
-      matched: hit.matched,
-      category: hit.category,
-      exitCode: exitCodeOf(input),
-    }],
-  }));
+  let exitCode = exitCodeOf(input);
+  const masked = hit.isEvidence && exitCode === 0 && maskedByPipe(command, hit.matched);
+  if (masked && outputShowsFailure(outputOf(input))) exitCode = 1;
+
+  updateSession(id, (s) => {
+    const now = Date.now();
+    const next = edited ? { ...s, lastEditTs: now } : { ...s };
+    if (!hit.isEvidence) return next;
+    return {
+      ...next,
+      evidence: [...next.evidence, {
+        // An edit-and-verify command (eslint --fix) proves the state it left.
+        ts: edited ? now + 1 : now,
+        cmd: command.trim().slice(0, 500),
+        matched: hit.matched,
+        category: hit.category,
+        exitCode,
+        ...(masked ? { masked: true } : {}),
+      }],
+    };
+  });
   return null;
 });

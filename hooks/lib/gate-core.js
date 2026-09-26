@@ -1,5 +1,5 @@
 // The receipts gate, as a pure function. hooks/gate.js is the plumbing around it.
-import { detectClaim, detectReceipt, detectOpener } from './claims.js';
+import { detectClaim, detectReceipt, detectOpener, detectSlop } from './claims.js';
 import { evidenceAfter } from './evidence.js';
 import { MAX_BLOCKS } from './state.js';
 
@@ -38,7 +38,37 @@ function latestEntry(entries) {
  * @param {string|null} args.suggested  command that would produce a receipt here
  * @returns {{action:'allow'|'block', kind:string, reason:string|null}}
  */
-export function decide({
+export function decide(args) {
+  const { message = '', mode = 'full', blocksThisTurn = 0 } = args;
+  const base = receiptVerdict(args);
+  if (['mode-off', 'stop-hook-active', 'empty-message'].includes(base.kind)) return base;
+  if (blocksThisTurn >= (MAX_BLOCKS[mode] ?? 0)) return base;
+
+  const style = styleIssues(message);
+  if (!style) return base;
+  // One block carries every problem, so a single rewrite can fix them all.
+  if (base.action === 'block') {
+    return { action: 'block', kind: style.kind === 'opener' ? 'opener' : base.kind, reason: `${style.reason}\n${base.reason}` };
+  }
+  return { action: 'block', kind: style.kind, reason: style.reason };
+}
+
+function styleIssues(message) {
+  const opener = detectOpener(message);
+  const slop = detectSlop(message);
+  const parts = [];
+  if (opener.opener) {
+    parts.push(`Frank: that message opens with "${opener.matched}". Rewrite it starting with the answer. `
+      + 'If the user is right, say why they are right, not that they are.');
+  }
+  if (slop.length > 0) {
+    parts.push(`Frank: stock phrases ${slop.map((p) => `"${p}"`).join(', ')}. Cut them or say the concrete thing instead.`);
+  }
+  if (parts.length === 0) return null;
+  return { kind: opener.opener ? 'opener' : 'slop', reason: parts.join('\n') };
+}
+
+function receiptVerdict({
   message = '',
   session = { lastEditTs: 0, evidence: [] },
   mode = 'full',
@@ -52,16 +82,6 @@ export function decide({
 
   const maxBlocks = MAX_BLOCKS[mode] ?? 0;
   const canBlock = blocksThisTurn < maxBlocks;
-
-  const opener = detectOpener(message);
-  if (mode === 'ultra' && opener.opener && canBlock) {
-    return {
-      action: 'block',
-      kind: 'opener',
-      reason: `Frank: that message opens with "${opener.matched}". Rewrite it starting with the answer. `
-        + 'If the user is right, say why they are right, not that they are.',
-    };
-  }
 
   const receipt = detectReceipt(message, { ignoreExamples: true });
   if (receipt.hasUnverified) return allow('honest-unverified');

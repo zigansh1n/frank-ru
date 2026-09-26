@@ -7,7 +7,7 @@
 // can be tested without spawning a process.
 import fs from 'node:fs';
 import { run } from './lib/io.js';
-import { getMode, readSession, updateSession, bumpStats, debug } from './lib/state.js';
+import { getMode, readSession, updateSession, bumpStats, debug, skipsSubagent } from './lib/state.js';
 import { suggestCommand } from './lib/evidence.js';
 import { detectOpener } from './lib/claims.js';
 import { decide } from './lib/gate-core.js';
@@ -44,6 +44,7 @@ const turnKey = (input) => String(input.prompt_id || input.turn_id || input.sess
 run('gate', (input) => {
   const mode = getMode();
   const event = /SubagentStop/i.test(String(input.hook_event_name)) ? 'SubagentStop' : 'Stop';
+  if (event === 'SubagentStop' && skipsSubagent(input.agent_type)) return null;
   const message = finalMessage(input);
   const id = input.session_id || input.sessionId;
   const session = readSession(id);

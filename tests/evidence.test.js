@@ -137,3 +137,23 @@ test('suggestCommand survives a broken package.json', () => {
   assert.equal(suggestCommand(dir), null);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('fork: shell edits, masked pipes, failure markers, extra runners', async () => {
+  const { isShellEdit, maskedByPipe, outputShowsFailure, classifyCommand: cc } = await import('../hooks/lib/evidence.js');
+  for (const c of ["sed -i '' s/a/b/ x.js", 'echo hi > src/a.txt', 'mv a.js b.js', 'npx prettier --write .', 'git apply p.diff', 'cat > f.py <<EOF\nx\nEOF']) {
+    assert.equal(isShellEdit(c), true, c);
+  }
+  for (const c of ['npm test > /tmp/log', 'pytest 2>&1 | tail -5', 'git commit -m "a > b"', 'grep -rn foo src', 'rm -rf /tmp/x', 'ls > /dev/null', 'pytest > run.log']) {
+    assert.equal(isShellEdit(c), false, c);
+  }
+  assert.equal(maskedByPipe('pytest -q 2>&1 | tail -5', 'pytest -q 2>&1'), true);
+  assert.equal(maskedByPipe('set -o pipefail; pytest | tail', 'pytest'), false);
+  assert.equal(maskedByPipe('npm test', 'npm test'), false);
+  assert.equal(outputShowsFailure('=== 2 failed, 10 passed ==='), true);
+  assert.equal(outputShowsFailure('# fail 3'), true);
+  assert.equal(outputShowsFailure('10 passed, 0 failed'), false);
+  assert.equal(outputShowsFailure('# fail 0'), false);
+  for (const c of ['./test.sh', 'bash scripts/check.sh', 'xcodebuild test -scheme A', 'swift build']) {
+    assert.equal(cc(c).isEvidence, true, c);
+  }
+});

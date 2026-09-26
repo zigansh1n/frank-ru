@@ -223,3 +223,58 @@ test('an unparseable config file does not disable the gate', () => {
   assert.equal(r.code, 0);
   assert.ok(r.json, 'a broken config should fall back to the default mode, not to silence');
 });
+
+// --------------------------------------------------------------- fork additions
+
+const stopRu = (message, extra = {}) => ({
+  hook_event_name: 'Stop', session_id: 'ru1', prompt_id: 'p1', last_assistant_message: message, cwd: os.tmpdir(), ...extra,
+});
+
+test('a masked pipe that printed a failure is recorded as a failed run', () => {
+  const FRANK_HOME = tmpHome();
+  runHook('ledger', { hook_event_name: 'PostToolUse', session_id: 'ru1', tool_name: 'Edit', tool_input: {} }, { FRANK_HOME });
+  runHook('ledger', {
+    hook_event_name: 'PostToolUse', session_id: 'ru1', tool_name: 'Bash',
+    tool_input: { command: 'pytest -q 2>&1 | tail -3' },
+    tool_response: { stdout: '=== 2 failed, 10 passed in 0.3s ===', stderr: '' },
+  }, { FRANK_HOME });
+  const r = runHook('gate', stopRu('Готово, тесты проходят.'), { FRANK_HOME });
+  assert.match(r.json.hookSpecificOutput.additionalContext, /exited 1/);
+});
+
+test('a masked pipe with a clean summary still counts as a pass', () => {
+  const FRANK_HOME = tmpHome();
+  runHook('ledger', {
+    hook_event_name: 'PostToolUse', session_id: 'ru1', tool_name: 'Bash',
+    tool_input: { command: 'pytest -q 2>&1 | tail -3' },
+    tool_response: { stdout: '12 passed in 0.3s', stderr: '' },
+  }, { FRANK_HOME });
+  const r = runHook('gate', stopRu('Готово, тесты проходят.'), { FRANK_HOME });
+  assert.equal(r.stdout, '');
+});
+
+test('a file edit through Bash makes earlier runs stale', () => {
+  const FRANK_HOME = tmpHome();
+  runHook('ledger', {
+    hook_event_name: 'PostToolUse', session_id: 'ru1', tool_name: 'Bash',
+    tool_input: { command: 'npm test' }, tool_response: { stdout: 'ok' },
+  }, { FRANK_HOME });
+  // Hooks run in separate processes; make sure the edit lands in a later millisecond.
+  const until = Date.now() + 5; while (Date.now() < until) { /* spin */ }
+  runHook('ledger', {
+    hook_event_name: 'PostToolUse', session_id: 'ru1', tool_name: 'Bash',
+    tool_input: { command: "sed -i '' 's/a/b/' src/app.js" }, tool_response: { stdout: '' },
+  }, { FRANK_HOME });
+  const r = runHook('gate', stopRu('Исправил парсер.'), { FRANK_HOME });
+  assert.match(r.json.hookSpecificOutput.additionalContext, /nothing ran after the last edit/);
+});
+
+test('subagents matching the skip pattern are neither gated nor injected', () => {
+  const env = { FRANK_SUBAGENT_SKIP: '^ocx-' };
+  const gate = runHook('gate', stopRu('Готово.', { hook_event_name: 'SubagentStop', agent_type: 'ocx-glm-5-3' }), env);
+  assert.equal(gate.stdout, '');
+  const inject = runHook('subagent', { hook_event_name: 'SubagentStart', session_id: 'ru1', agent_type: 'ocx-kimi-k3' }, env);
+  assert.equal(inject.stdout, '');
+  const other = runHook('gate', stopRu('Готово.', { hook_event_name: 'SubagentStop', agent_type: 'general-purpose' }), env);
+  assert.match(other.stdout, /Frank/);
+});

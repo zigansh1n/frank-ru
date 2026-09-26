@@ -28,6 +28,9 @@ const TEST_RUNNERS = [
   /\byarn\s+workspaces?\s+\S+\s+(?:run\s+)?(?:test|check)\b/i,
   /(?:^|[\s;&|(])(?:just|task|mise|rake)\s+(?:\S+\s+)*(?:test|tests|check|ci|verify)\b/i,
   /\b(?:mix|sbt|swift|flutter|dart)\s+test\b/i,
+  /\bxcodebuild\b.*\btest\b/i,
+  // Project scripts: ./test.sh, bash scripts/check.sh, sh ci/verify.sh
+  /(?:^|[\s;&|(])(?:\.\/|bash\s+|sh\s+|zsh\s+)[\w./-]*(?:test|check|verify|ci)[\w.-]*\.sh\b/i,
 ];
 
 const BUILDS = [
@@ -44,6 +47,8 @@ const BUILDS = [
   /\bdotnet\s+build\b/i,
   /\bgradle\w*\s+build\b/i,
   /\bmvn\s+(?:package|compile)\b/i,
+  /\bxcodebuild\b/i,
+  /\bswift\s+build\b/i,
 ];
 
 // The interpreter has to start a command, not end a filename: "git add a.py
@@ -151,4 +156,70 @@ export function suggestCommand(cwd) {
     }
   } catch { /* unreadable cwd */ }
   return null;
+}
+
+const FILTERS = /^(?:tail|head|grep|egrep|rg|sed|awk|sort|uniq|tee|cat|less|more|cut|wc|tr|jq|column|fold|nl)\b/i;
+
+/**
+ * `pytest | tail -5` exits with tail's status, so a failing suite reads as
+ * exit 0 unless the shell has pipefail. True when the verification segment
+ * feeds a filter and nothing turned pipefail on.
+ */
+export function maskedByPipe(command, segment) {
+  if (typeof command !== 'string' || !segment || /pipefail/.test(command)) return false;
+  for (const chain of command.split(/\|\||&&|;|\n/)) {
+    const stages = chain.split(/(?<!\|)\|(?!\|)/).map((x) => x.trim()).filter(Boolean);
+    const i = stages.findIndex((st) => st === segment.trim() || st.includes(segment.trim()));
+    if (i === -1) continue;
+    return stages.slice(i + 1).some((st) => FILTERS.test(st));
+  }
+  return false;
+}
+
+const FAILURE_MARKERS = [
+  /\b[1-9]\d*\s+(?:failed|failing|errors?)\b/i,
+  /\bFAILED\b/,
+  /^FAIL\b/m,
+  /^# fail [1-9]/m,
+  /npm ERR!/,
+  /Traceback \(most recent call last\)/,
+  /\berror\[E\d+\]/,
+  /^error(?:\[\w+\])?:/im,
+  /\*\* (?:BUILD|TEST) FAILED \*\*/,
+  /\bTests?:\s+[1-9]\d* failed\b/,
+];
+
+/** Output of a masked pipeline that still shows a failure. */
+export function outputShowsFailure(output) {
+  const text = String(output || '');
+  return FAILURE_MARKERS.some((re) => re.test(text));
+}
+
+const TMP_TARGET = /^['"]?(?:\/dev\/|\/tmp\/|\/private\/|\/var\/folders\/|\$\{?TMPDIR)/;
+const EDIT_COMMANDS = [
+  /^(?:sudo\s+)?(?:g?sed|perl|ruby)\b.*\s-i/,
+  /^(?:mv|cp|rm|touch|truncate|patch|install|ln|rsync)\b/,
+  /^git\s+(?:apply|am|restore|merge|rebase|cherry-pick|pull|checkout\s+(?:\S+\s+)?--|reset\s+--hard|stash\s+(?:pop|apply))\b/,
+  /\s--(?:write|fix)\b/,
+  /^(?:black|cargo\s+fmt|gofmt\s+-w|ruff\s+format|swiftformat|isort)\b/,
+];
+
+/**
+ * Did this shell command change files in the project? Writes that only touch
+ * temp dirs or /dev do not count: they cannot change what a test run proved.
+ */
+export function isShellEdit(command) {
+  if (typeof command !== 'string') return false;
+  // Heredoc bodies are data, not commands.
+  const head = command.includes('<<') ? command.split('\n').filter((l, i, all) => i <= all.findIndex((x) => x.includes('<<'))).join('\n') : command;
+  const bare = head.replace(/'[^']*'|"(?:\\.|[^"\\])*"/g, '""');
+  for (const seg of splitCommands(bare)) {
+    if (/(?:\/tmp\/|\/private\/|\/var\/folders\/|\$\{?TMPDIR)/.test(seg) && !/>\s*[^/\s$]/.test(seg)) continue;
+    if (EDIT_COMMANDS.some((re) => re.test(seg))) return true;
+    const redirect = /(?<![0-9&<>])>{1,2}(?!&)\s*(\S+)/.exec(seg);
+    if (redirect && !TMP_TARGET.test(redirect[1]) && !/\.log$/.test(redirect[1])) return true;
+    const tee = /^tee\s+(?:-a\s+)?(\S+)/.exec(seg);
+    if (tee && !TMP_TARGET.test(tee[1])) return true;
+  }
+  return false;
 }

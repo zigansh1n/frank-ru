@@ -190,3 +190,73 @@ test('empty and non-string input is safe', () => {
     assert.equal(detectReceipt(v).hasReceipt, false);
   }
 });
+
+// --- Russian ------------------------------------------------------------------
+const RU_CLAIMS = [
+  ['Готово.', 'completion'],
+  ['Готово, баг исправлен.', 'completion'],
+  ['Всё готово.', 'completion'],
+  ['Исправил парсер.', 'completion'],
+  ['Я починил ретраи.', 'completion'],
+  ['Баг исправлен.', 'completion'],
+  ['Теперь работает.', 'completion'],
+  ['Должно работать.', 'completion'],
+  ['Сборка готова к релизу.', 'completion'],
+  ['Все тесты проходят.', 'verification'],
+  ['Тесты прошли.', 'verification'],
+  ['Проверил вывод.', 'verification'],
+  ['Проверено.', 'verification'],
+  ['Компилируется без ошибок.', 'verification'],
+];
+for (const [text, kind] of RU_CLAIMS) {
+  test(`ru claim: ${text}`, () => {
+    const r = detectClaim(text);
+    assert.equal(r.claim, true, `expected a claim in: ${text}`);
+    assert.equal(r.kind, kind);
+  });
+}
+
+const RU_NOT_CLAIMS = [
+  'Тесты не проходят.',
+  'Это ещё не исправлено.',
+  'Я не проверял.',
+  'Готово?',
+  'Разве это исправлено',
+  'Когда будет готово, скажу.',
+  'Нужно, чтобы было готово к пятнице.',
+  'Проверь, что тесты проходят.',
+  'Запусти тесты, потом посмотрим.',
+  'Кэш реализован в gateway.',
+  'Готовое решение лежит в utils.',
+  'Он собирается переписать модуль.',
+  '`готово`',
+  '> Готово, всё исправлено.',
+];
+for (const text of RU_NOT_CLAIMS) {
+  test(`ru not a claim: ${text}`, () => {
+    assert.equal(detectClaim(text).claim, false, `false positive in: ${text}`);
+  });
+}
+
+test('ru openers', () => {
+  for (const t of ['Ты абсолютно прав, тут баг.', 'Вы правы.', 'Отличный вопрос! Смотри.', 'Хорошо подмечено.', 'Прошу прощения за путаницу.']) {
+    assert.equal(detectOpener(t).opener, true, t);
+  }
+  for (const t of ['Не могу сказать, что ты прав.', 'Ответ: 42.', 'Правка в parser.py.']) {
+    assert.equal(detectOpener(t).opener, false, t);
+  }
+});
+
+test('ru receipt keys', () => {
+  const r = detectReceipt('запущено: npm test\nрезультат: 5 passed\nне проверено: e2e');
+  assert.equal(r.hasReceipt, true);
+  assert.equal(r.hasUnverified, true);
+  assert.deepEqual(r.ran, ['npm test']);
+});
+
+test('slop: stock phrases are found outside code and quotes only', async () => {
+  const { detectSlop } = await import('../hooks/lib/claims.js');
+  assert.deepEqual(detectSlop('Стоит отметить, что лимит 5. I hope this helps.'), ['I hope this helps', 'Стоит отметить']);
+  assert.deepEqual(detectSlop('Лимит 5, он в `config.py`: `стоит отметить`\n> Надеюсь, это поможет'), []);
+  assert.deepEqual(detectSlop('Лимит стоит в config.py.'), []);
+});

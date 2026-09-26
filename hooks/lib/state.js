@@ -87,6 +87,21 @@ export function getConfig() {
   return readJson(CONFIG_FILE(), {});
 }
 
+/**
+ * Subagent types Frank leaves alone: FRANK_SUBAGENT_SKIP, else
+ * config.json {"subagents": {"skip": "<regex>"}}. Such agents usually run
+ * their own verification protocol, and a second gate only costs them turns.
+ */
+export function skipsSubagent(agentType) {
+  const pattern = process.env.FRANK_SUBAGENT_SKIP || getConfig()?.subagents?.skip;
+  if (!pattern || !agentType) return false;
+  try {
+    return new RegExp(pattern, 'i').test(String(agentType));
+  } catch {
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------- session ledger
 
 export function emptySession() {

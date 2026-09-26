@@ -33,6 +33,15 @@ On Claude Code and Codex, a local Stop hook compares the final message against a
 
 ## Trust boundary
 
+> **frank-ru fork.** Adds Russian to every detector (completion claims, verification
+> claims, negation, openers, receipt keys `запущено:` / `результат:` / `не проверено:`),
+> blocks sycophantic openers and stock prose phrases (EN + RU) in `full` mode, records a
+> failing run behind `cmd | tail` as failed, treats Bash file writes (`sed -i`, `>`, `mv`,
+> `git apply`, `--fix`) as edits, and skips subagents matching `subagents.skip` in
+> `~/.config/frank/config.json`. Install: `claude plugin marketplace add zigansh1n/frank-ru`,
+> then `claude plugin install frank@frank`.
+
+
 Frank is local prompt and hook code, not a security boundary. Read it before trusting it, and review the host's hook approval prompt. The hooks do not make network requests or run commands; they observe host events. They store the command (up to 500 characters) and its exit code, not command output or message content, in Frank's local state directory for up to seven days. A malformed event, missing Node installation, or unreadable state causes the hooks to fail open rather than block work. A malicious repository, tool, or model output can still mislead an agent; pin and review any project instructions you load.
 
 The implementation starts at [`hooks/inject.js`](hooks/inject.js), [`hooks/ledger.js`](hooks/ledger.js), and [`hooks/gate.js`](hooks/gate.js). The exact state and deletion behavior is in [`scripts/uninstall.js`](scripts/uninstall.js).
@@ -399,7 +408,7 @@ Recorded run of the suite (Node 22.10.0, Windows 11, 2026-09-14):
 
 ```
 ran: npm run check
-result: 13 adapters match rules/frank.md; 7 version files at 0.2.2; 322 passed, 0 failed
+result: 13 adapters match rules/frank.md; 7 version files at 0.3.0; 365 passed, 0 failed
 ```
 
 The benchmark: [benchmarks/](benchmarks/). It runs on a Claude Code login, no API key.
