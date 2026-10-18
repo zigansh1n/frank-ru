@@ -78,6 +78,6 @@ test('/frank default in a prompt clears the switch and re-injects at the setting
   assert.match(prompt(h, '/frank ultra', env).hookSpecificOutput.additionalContext, /mode: ultra/);
   const back = prompt(h, '/frank default', env);
   assert.match(back.hookSpecificOutput.additionalContext, /mode: lite/);
-  assert.equal(back.systemMessage, 'Frank: lite', 'a real change is announced');
+  assert.equal(back.systemMessage, 'Frank: режим lite', 'a real change is announced');
   assert.equal(prompt(h, '/frank default', env).systemMessage, undefined, 'no change, no banner');
 });

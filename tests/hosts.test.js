@@ -73,7 +73,7 @@ test('Copilot namespaced /frank:frank still switches the mode', () => {
 
 test('Claude Code announces the mode once, on startup only', () => {
   const start = runHook('inject', { hook_event_name: 'SessionStart', source: 'startup' });
-  assert.equal(start.json.systemMessage, 'Frank: full');
+  assert.equal(start.json.systemMessage, 'Frank: режим full');
   const prompt = runHook('inject', { hook_event_name: 'UserPromptSubmit', prompt: 'hi' });
   assert.equal(prompt.json?.systemMessage, undefined);
 });

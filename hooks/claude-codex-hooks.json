@@ -67,7 +67,7 @@
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gate.js\"",
             "timeout": 15,
-            "statusMessage": "Frank: checking the receipt"
+            "statusMessage": "Frank: проверяю, запускалась ли проверка"
           }
         ]
       }

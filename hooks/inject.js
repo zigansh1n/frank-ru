@@ -56,7 +56,7 @@ run('inject', (input) => {
   // second announcement, and never under Codex, which already shows the badge.
   const announce = event === 'SessionStart' && input.source !== 'compact';
   if (host === 'claude' && (announce || switched)) {
-    out.systemMessage = `Frank: ${mode}`;
+    out.systemMessage = `Frank: режим ${mode}`;
   }
   return out;
 });

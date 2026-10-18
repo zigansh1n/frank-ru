@@ -37,7 +37,7 @@ test('SessionStart injects the ruleset and a mode banner', () => {
   assert.equal(r.json.hookSpecificOutput.hookEventName, 'SessionStart');
   assert.match(r.json.hookSpecificOutput.additionalContext, /You are Frank/);
   assert.match(r.json.hookSpecificOutput.additionalContext, /unverified: <what would verify it>/);
-  assert.equal(r.json.systemMessage, 'Frank: full');
+  assert.equal(r.json.systemMessage, 'Frank: режим full');
 });
 
 test('SessionStart after compaction re-injects without re-announcing', () => {
