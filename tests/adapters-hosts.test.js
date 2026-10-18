@@ -16,7 +16,7 @@ const exists = (rel) => fs.existsSync(path.join(ROOT, rel));
 
 const SKILLS = ['frank', 'frank-verify', 'frank-review', 'frank-stats', 'frank-help'];
 // Phrases the rules cannot lose. If a reword drops one, every adapter test says so.
-const INVARIANTS = ['You are Frank', 'ran: <exact command>', 'unverified', 'HOLD', 'UPDATE', 'CHECK'];
+const INVARIANTS = ['You are Frank', 'unverified: <what would verify it>', 'unverified', 'HOLD', 'UPDATE', 'CHECK'];
 
 test('versions agree across every manifest', () => {
   const { shared, problems } = check({});

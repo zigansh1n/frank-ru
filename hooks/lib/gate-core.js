@@ -143,8 +143,8 @@ function receiptVerdict({
     action: 'block',
     kind: 'no-receipt',
     reason: `Frank: the message claims "${claim.matched}" and nothing ran after the last edit to `
-      + `back it up. Run ${hint}, or the narrowest command that covers the change, and end with:\n`
-      + '  ran: <command>\n  result: <real output>\n'
-      + 'Or, if you are not going to run it, end with `unverified: <what would verify it>`.',
+      + `back it up. Run ${hint}, or the narrowest command that covers the change, and say in plain `
+      + 'words what it showed. If you are not going to run it, say so with one line '
+      + '`unverified: <what would verify it>` (in Russian: `не проверено: <что проверило бы>`).',
   };
 }

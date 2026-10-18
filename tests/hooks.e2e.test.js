@@ -36,7 +36,7 @@ test('SessionStart injects the ruleset and a mode banner', () => {
   assert.equal(r.code, 0);
   assert.equal(r.json.hookSpecificOutput.hookEventName, 'SessionStart');
   assert.match(r.json.hookSpecificOutput.additionalContext, /You are Frank/);
-  assert.match(r.json.hookSpecificOutput.additionalContext, /ran: <exact command>/);
+  assert.match(r.json.hookSpecificOutput.additionalContext, /unverified: <what would verify it>/);
   assert.equal(r.json.systemMessage, 'Frank: full');
 });
 
@@ -86,7 +86,7 @@ test('SubagentStart gets the short ruleset', () => {
   const r = runHook('subagent', { hook_event_name: 'SubagentStart', session_id: 's1', agent_type: 'Explore' });
   const ctx = r.json.hookSpecificOutput.additionalContext;
   assert.match(ctx, /Never claim done/);
-  assert.match(ctx, /ran: <exact command>/);
+  assert.match(ctx, /unverified: <what would verify it>/);
   assert.ok(!/On pushback/.test(ctx), 'subagent variant should be the short one');
 });
 

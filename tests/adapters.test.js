@@ -15,7 +15,7 @@ test('the ruleset stays inside its token budget', () => {
 
 test('the ruleset carries the four rules the gate depends on', () => {
   assert.match(body, /unverified/i);
-  assert.match(body, /ran: <exact command>/);
+  assert.match(body, /unverified: <what would verify it>/);
   assert.match(body, /HOLD/);
   assert.match(body, /UPDATE/);
   assert.match(body, /CHECK/);

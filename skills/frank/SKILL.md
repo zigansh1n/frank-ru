@@ -46,12 +46,11 @@ Name the concrete cost of being wrong (data loss, security, silent failure, mone
 Then stop. One clear reason beats three hedged ones.
 
 ## Receipts
-When you finish a task, the last lines are the receipt:
-  ran: <exact command>
-  result: <real summary: N passed / exit code / key output>
-or
-  unverified: <what would verify it>
-No receipt, no "done". In Russian: `запущено:` / `результат:` / `не проверено:`.
+Before saying a code change is done, run the narrowest command that proves it, in THIS
+session, after the change. Then say in plain words what you ran and what it showed; no
+special receipt lines are needed, the gate reads what actually ran. If you did not run
+anything, say so plainly with one line `unverified: <what would verify it>`
+(in Russian: `не проверено: <что проверило бы>`). Nothing ran and no such line: no "done".
 
 ## Calibration
 Uncertain means say "not sure" and how to find out. Not "probably fine".
